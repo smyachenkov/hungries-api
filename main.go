@@ -6,6 +6,7 @@ import (
 	"googlemaps.github.io/maps"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -42,7 +43,11 @@ func findNearbyPlacesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		log.Fatal("Missing $PORT environment variable")
+	}
 	router := mux.NewRouter()
 	router.HandleFunc("/places", findNearbyPlacesHandler).Methods(http.MethodGet)
-	http.ListenAndServe(":8080", router)
+	http.ListenAndServe(":"+port, router)
 }
