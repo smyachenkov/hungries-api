@@ -12,6 +12,6 @@ type PlaceResponse struct {
 }
 
 type LocationResponse struct {
-	Latitude  float64 `json:"Latitude"`
-	Longitude float64 `json:"longitude"`
+	Latitude  float64 `json:"lat"`
+	Longitude float64 `json:"long"`
 }
