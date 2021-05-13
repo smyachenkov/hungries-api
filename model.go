@@ -1,11 +1,11 @@
 package main
 
 type PlacesResponse struct {
-	Places        []Place `json:"places"`
-	NextPageToken string  `json:"nextPageToken"`
+	Places        []PlaceResponse `json:"places"`
+	NextPageToken string          `json:"nextPageToken"`
 }
 
-type Place struct {
+type PlaceResponse struct {
 	Name string `json:"name"`
 	Url  string `json:"url"`
 }
