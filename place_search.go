@@ -44,6 +44,8 @@ func getPlace(placeId string) (dao.PlaceDB, error) {
 	var placeDetailsResult, err = Dao.MapsApi.GetPlaceInfoFromMaps(placeId, []maps.PlaceDetailsFieldMask{
 		maps.PlaceDetailsFieldMaskURL,
 		maps.PlaceDetailsFieldMaskName,
+		maps.PlaceDetailsFieldMaskGeometryLocationLat,
+		maps.PlaceDetailsFieldMaskGeometryLocationLng,
 	})
 	if err != nil {
 		log.Print(err)
@@ -54,6 +56,8 @@ func getPlace(placeId string) (dao.PlaceDB, error) {
 		GooglePlaceId: placeId,
 		Name:          placeDetailsResult.Name,
 		Url:           placeDetailsResult.URL,
+		Lat:           placeDetailsResult.Geometry.Location.Lat,
+		Lng:           placeDetailsResult.Geometry.Location.Lng,
 	}
 	result, err := Dao.PlacesDB.SavePlace(newPlaceDb)
 	if err != nil {
