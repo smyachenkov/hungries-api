@@ -19,6 +19,10 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string) (P
 		place := PlaceResponse{
 			Name: placeInfo.Name,
 			Url:  placeInfo.Url,
+			Location: LocationResponse{
+				Latitude:  placeInfo.Lat,
+				Longitude: placeInfo.Lng,
+			},
 		}
 		places[i] = place
 	}
