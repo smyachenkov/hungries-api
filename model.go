@@ -9,6 +9,7 @@ type PlaceResponse struct {
 	Name     string           `json:"name"`
 	Url      string           `json:"url"`
 	Location LocationResponse `json:"location"`
+	Distance int32            `json:"distance"`
 }
 
 type LocationResponse struct {
