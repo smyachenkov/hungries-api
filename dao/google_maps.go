@@ -37,3 +37,17 @@ func (s *GoogleMapsAPIService) FindNearbyPlaces(coordinates maps.LatLng, radius 
 	}
 	return nearbySearchResp, nil
 }
+
+// GetPhoto get photo of the place
+func (s *GoogleMapsAPIService) GetPhoto(photoReference string, width uint, height uint) (maps.PlacePhotoResponse, error) {
+	photoRequest := &maps.PlacePhotoRequest{
+		PhotoReference: photoReference,
+		MaxHeight:      height,
+		MaxWidth:       width,
+	}
+	placePhotoResponse, err := s.MapsClient.PlacePhoto(context.Background(), photoRequest)
+	if err != nil {
+		return maps.PlacePhotoResponse{}, err
+	}
+	return placePhotoResponse, nil
+}

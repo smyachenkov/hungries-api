@@ -13,13 +13,14 @@ type PlaceDB struct {
 	Url           string
 	Lat           float64
 	Lng           float64
+	PhotoUrl      sql.NullString
 }
 
 type PlaceDbService struct {
 	DB *sql.DB
 }
 
-const PlaceFields = `id, google_place_id, name, url, ST_X(location::geometry), ST_Y(location::geometry)`
+const PlaceFields = `id, google_place_id, name, url, ST_X(location::geometry), ST_Y(location::geometry), photo_url`
 
 // PlaceExists check if place exists buy it's google id
 func (s *PlaceDbService) PlaceExists(googlePlaceId string) (bool, error) {
@@ -38,7 +39,7 @@ func (s *PlaceDbService) GetPlaceByPlaceId(googlePlaceId string) (*PlaceDB, erro
 	row := s.DB.QueryRow(
 		`select `+PlaceFields+` from hungries.place where google_place_id = $1`,
 		googlePlaceId)
-	err := row.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng)
+	err := row.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng, &place.PhotoUrl)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,7 +52,7 @@ func (s *PlaceDbService) GetPlaceById(id int32) (*PlaceDB, error) {
 	row := s.DB.QueryRow(
 		`select `+PlaceFields+` from hungries.place where id = $1`,
 		id)
-	err := row.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng)
+	err := row.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng, &place.PhotoUrl)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -62,12 +63,13 @@ func (s *PlaceDbService) GetPlaceById(id int32) (*PlaceDB, error) {
 func (s *PlaceDbService) SavePlace(newPlace PlaceDB) (*PlaceDB, error) {
 	lastInsertId := 0
 	err := s.DB.QueryRow(`insert into
-    							hungries.place (google_place_id, name, url, location) 
-								values ($1, $2, $3, ST_GeomFromText($4)) returning id`,
+									hungries.place (google_place_id, name, url, location, photo_url) 
+								values ($1, $2, $3, ST_GeomFromText($4), nullif($5, '')) returning id`,
 		newPlace.GooglePlaceId,
 		newPlace.Name,
 		newPlace.Url,
 		LatLngToString(newPlace.Lat, newPlace.Lng),
+		newPlace.PhotoUrl,
 	).Scan(&lastInsertId)
 	if err != nil {
 		log.Fatal(err)

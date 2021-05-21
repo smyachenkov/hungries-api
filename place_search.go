@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"googlemaps.github.io/maps"
 	"hungries-api/dao"
 	"log"
@@ -25,6 +26,7 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string) (P
 				Longitude: placeInfo.Lng,
 			},
 			Distance: int32(getDistance(coordinates.Lat, coordinates.Lng, placeInfo.Lat, placeInfo.Lng)),
+			PhotoUrl: placeInfo.PhotoUrl.String,
 		}
 		places[i] = place
 	}
@@ -52,11 +54,14 @@ func getPlace(placeId string) (dao.PlaceDB, error) {
 		maps.PlaceDetailsFieldMaskName,
 		maps.PlaceDetailsFieldMaskGeometryLocationLat,
 		maps.PlaceDetailsFieldMaskGeometryLocationLng,
+		maps.PlaceDetailsFieldMaskPhotos,
 	})
 	if err != nil {
 		log.Print(err)
 		return dao.PlaceDB{}, err
 	}
+	// get photo and save it to cloud
+	photoUrl, _ := uploadMainPhoto(placeId, placeDetailsResult.Photos)
 	// save
 	var newPlaceDb = dao.PlaceDB{
 		GooglePlaceId: placeId,
@@ -64,6 +69,7 @@ func getPlace(placeId string) (dao.PlaceDB, error) {
 		Url:           placeDetailsResult.URL,
 		Lat:           placeDetailsResult.Geometry.Location.Lat,
 		Lng:           placeDetailsResult.Geometry.Location.Lng,
+		PhotoUrl:      sql.NullString{String: photoUrl, Valid: photoUrl != ""},
 	}
 	result, err := Dao.PlacesDB.SavePlace(newPlaceDb)
 	if err != nil {
@@ -71,6 +77,26 @@ func getPlace(placeId string) (dao.PlaceDB, error) {
 		return dao.PlaceDB{}, err
 	}
 	return *result, err
+}
+
+func uploadMainPhoto(placeId string, photos []maps.Photo) (string, error) {
+	if len(photos) == 0 {
+		return "", nil
+	}
+	firstPhoto := photos[0]
+	photoReference := firstPhoto.PhotoReference
+	photo, err := Dao.MapsApi.GetPhoto(photoReference, uint(firstPhoto.Width), uint(firstPhoto.Height))
+	if err != nil {
+		log.Print(err)
+		return "", err
+	}
+	photoUrl, err := Dao.CloudStorage.UploadPhoto(placeId, photo.Data)
+	if err != nil {
+		log.Print(err)
+		return "", err
+	}
+
+	return photoUrl, nil
 }
 
 // Distance between 2 points in meters

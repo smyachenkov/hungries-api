@@ -1,12 +1,15 @@
 package main
 
 import (
+	"cloud.google.com/go/storage"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gorilla/mux"
+	"google.golang.org/api/option"
 	"googlemaps.github.io/maps"
 	"hungries-api/dao"
 	"log"
@@ -20,8 +23,9 @@ var db *sql.DB
 var Dao *DaoEnv
 
 type DaoEnv struct {
-	PlacesDB dao.PlaceDbService
-	MapsApi  dao.GoogleMapsAPIService
+	PlacesDB     dao.PlaceDbService
+	MapsApi      dao.GoogleMapsAPIService
+	CloudStorage dao.GoogleCloudStorageService
 }
 
 func initDB(dataSourceName string) error {
@@ -69,6 +73,7 @@ func main() {
 	port := checkEnvVariable("PORT")
 	databaseUrl := checkEnvVariable("DATABASE_URL")
 	googleMapsApiKey := checkEnvVariable("GOOGLE_MAPS_API_KEY")
+	storageKeyJson := checkEnvVariable("STORAGE_KEY_JSON")
 
 	// init DB and DAO objects
 	err := initDB(databaseUrl)
@@ -76,9 +81,11 @@ func main() {
 		log.Fatal(err)
 	}
 	mapsClient, _ := maps.NewClient(maps.WithAPIKey(googleMapsApiKey))
+	cloudStorageClient, _ := storage.NewClient(context.Background(), option.WithCredentialsJSON([]byte(storageKeyJson)))
 	Dao = &DaoEnv{
-		PlacesDB: dao.PlaceDbService{DB: db},
-		MapsApi:  dao.GoogleMapsAPIService{MapsClient: mapsClient},
+		PlacesDB:     dao.PlaceDbService{DB: db},
+		MapsApi:      dao.GoogleMapsAPIService{MapsClient: mapsClient},
+		CloudStorage: dao.GoogleCloudStorageService{StorageClient: cloudStorageClient},
 	}
 
 	// run migrations
