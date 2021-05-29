@@ -6,10 +6,11 @@ type PlacesResponse struct {
 }
 
 type PlaceResponse struct {
+	Id       uint             `json:"id"`
 	Name     string           `json:"name"`
 	Url      string           `json:"url"`
 	Location LocationResponse `json:"location"`
-	Distance int32            `json:"distance"`
+	Distance uint             `json:"distance"`
 	PhotoUrl string           `json:"photoUrl"`
 }
 

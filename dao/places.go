@@ -7,7 +7,7 @@ import (
 )
 
 type PlaceDB struct {
-	Id            int32
+	Id            uint
 	GooglePlaceId string
 	Name          string
 	Url           string
@@ -22,10 +22,21 @@ type PlaceDbService struct {
 
 const PlaceFields = `id, google_place_id, name, url, ST_X(location::geometry), ST_Y(location::geometry), photo_url`
 
-// PlaceExists check if place exists buy it's google id
-func (s *PlaceDbService) PlaceExists(googlePlaceId string) (bool, error) {
+// PlaceExistsByGoogleId check if place exists by google id
+func (s *PlaceDbService) PlaceExistsByGoogleId(googlePlaceId string) (bool, error) {
 	var result bool
 	row := s.DB.QueryRow(`select count(1) from hungries.place where google_place_id = $1`, googlePlaceId)
+	err := row.Scan(&result)
+	if err != nil {
+		log.Print(err)
+	}
+	return result, nil
+}
+
+// PlaceExistsById check if place exists by internal id
+func (s *PlaceDbService) PlaceExistsById(placeId uint) (bool, error) {
+	var result bool
+	row := s.DB.QueryRow(`select count(1) from hungries.place where id = $1`, placeId)
 	err := row.Scan(&result)
 	if err != nil {
 		log.Print(err)
@@ -47,7 +58,7 @@ func (s *PlaceDbService) GetPlaceByPlaceId(googlePlaceId string) (*PlaceDB, erro
 }
 
 // GetPlaceById get place buy it's id
-func (s *PlaceDbService) GetPlaceById(id int32) (*PlaceDB, error) {
+func (s *PlaceDbService) GetPlaceById(id uint) (*PlaceDB, error) {
 	var place PlaceDB
 	row := s.DB.QueryRow(
 		`select `+PlaceFields+` from hungries.place where id = $1`,
@@ -61,7 +72,7 @@ func (s *PlaceDbService) GetPlaceById(id int32) (*PlaceDB, error) {
 
 // SavePlace save new place
 func (s *PlaceDbService) SavePlace(newPlace PlaceDB) (*PlaceDB, error) {
-	lastInsertId := 0
+	lastInsertId := uint(0)
 	err := s.DB.QueryRow(`insert into
 									hungries.place (google_place_id, name, url, location, photo_url) 
 								values ($1, $2, $3, ST_GeomFromText($4), nullif($5, '')) returning id`,
@@ -74,7 +85,7 @@ func (s *PlaceDbService) SavePlace(newPlace PlaceDB) (*PlaceDB, error) {
 	if err != nil {
 		log.Print(err)
 	}
-	return s.GetPlaceById(int32(lastInsertId))
+	return s.GetPlaceById(lastInsertId)
 }
 
 func LatLngToString(lat float64, lng float64) string {

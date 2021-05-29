@@ -4,7 +4,6 @@ import (
 	"cloud.google.com/go/storage"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -15,8 +14,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
-	"strings"
 )
 
 var db *sql.DB
@@ -24,6 +21,7 @@ var Dao *DaoEnv
 
 type DaoEnv struct {
 	PlacesDB     dao.PlaceDbService
+	LikesDB      dao.LikeDBService
 	MapsApi      dao.GoogleMapsAPIService
 	CloudStorage dao.GoogleCloudStorageService
 }
@@ -35,37 +33,6 @@ func initDB(dataSourceName string) error {
 		return err
 	}
 	return db.Ping()
-}
-
-func findNearbyPlacesHandler(w http.ResponseWriter, r *http.Request) {
-	pageTokenParam, hasToken := r.URL.Query()["pagetoken"]
-	var pageToken string
-	if hasToken {
-		pageToken = pageTokenParam[0]
-	}
-
-	radius, _ := strconv.ParseUint(r.URL.Query()["radius"][0], 10, 64)
-
-	coordinatesParam, hasCoordinates := r.URL.Query()["coordinates"]
-	var coordinates maps.LatLng
-	if hasCoordinates {
-		latitude, _ := strconv.ParseFloat(strings.Split(coordinatesParam[0], ",")[0], 64)
-		longitude, _ := strconv.ParseFloat(strings.Split(coordinatesParam[0], ",")[1], 64)
-		coordinates = maps.LatLng{
-			Lat: latitude,
-			Lng: longitude,
-		}
-	}
-
-	places, err := FindNearbyPlaces(coordinates, uint(radius), pageToken)
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Default().Print("Error discovering places " + err.Error())
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(places)
 }
 
 func main() {
@@ -84,6 +51,7 @@ func main() {
 	cloudStorageClient, _ := storage.NewClient(context.Background(), option.WithCredentialsJSON([]byte(storageKeyJson)))
 	Dao = &DaoEnv{
 		PlacesDB:     dao.PlaceDbService{DB: db},
+		LikesDB:      dao.LikeDBService{DB: db},
 		MapsApi:      dao.GoogleMapsAPIService{MapsClient: mapsClient},
 		CloudStorage: dao.GoogleCloudStorageService{StorageClient: cloudStorageClient},
 	}
@@ -101,6 +69,7 @@ func main() {
 	// set up routing
 	router := mux.NewRouter()
 	router.HandleFunc("/places", findNearbyPlacesHandler).Methods(http.MethodGet)
+	router.HandleFunc("/place/{place}/like/{device}/{liked}", saveLikeHandler).Methods(http.MethodPost)
 	http.ListenAndServe(":"+port, router)
 }
 

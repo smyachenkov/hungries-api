@@ -22,13 +22,14 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string) (P
 		currentPlace := nearbySearchResp.Results[i]
 		placeInfo, _ := getPlace(currentPlace.PlaceID)
 		place := PlaceResponse{
+			Id:   placeInfo.Id,
 			Name: placeInfo.Name,
 			Url:  placeInfo.Url,
 			Location: LocationResponse{
 				Latitude:  placeInfo.Lat,
 				Longitude: placeInfo.Lng,
 			},
-			Distance: int32(getDistance(coordinates.Lat, coordinates.Lng, placeInfo.Lat, placeInfo.Lng)),
+			Distance: uint(getDistance(coordinates.Lat, coordinates.Lng, placeInfo.Lat, placeInfo.Lng)),
 			PhotoUrl: placeInfo.PhotoUrl.String,
 		}
 		places[i] = place
@@ -42,7 +43,7 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string) (P
 
 func getPlace(placeId string) (dao.PlaceDB, error) {
 	// check db
-	exists, _ := Dao.PlacesDB.PlaceExists(placeId)
+	exists, _ := Dao.PlacesDB.PlaceExistsByGoogleId(placeId)
 	if exists {
 		var place, err = Dao.PlacesDB.GetPlaceByPlaceId(placeId)
 		if err != nil {
