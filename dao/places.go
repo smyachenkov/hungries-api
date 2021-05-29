@@ -28,7 +28,7 @@ func (s *PlaceDbService) PlaceExists(googlePlaceId string) (bool, error) {
 	row := s.DB.QueryRow(`select count(1) from hungries.place where google_place_id = $1`, googlePlaceId)
 	err := row.Scan(&result)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	return result, nil
 }
@@ -41,7 +41,7 @@ func (s *PlaceDbService) GetPlaceByPlaceId(googlePlaceId string) (*PlaceDB, erro
 		googlePlaceId)
 	err := row.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng, &place.PhotoUrl)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	return &place, nil
 }
@@ -54,7 +54,7 @@ func (s *PlaceDbService) GetPlaceById(id int32) (*PlaceDB, error) {
 		id)
 	err := row.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng, &place.PhotoUrl)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	return &place, nil
 }
@@ -72,7 +72,7 @@ func (s *PlaceDbService) SavePlace(newPlace PlaceDB) (*PlaceDB, error) {
 		newPlace.PhotoUrl,
 	).Scan(&lastInsertId)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	return s.GetPlaceById(int32(lastInsertId))
 }
