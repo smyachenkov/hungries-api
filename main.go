@@ -41,6 +41,8 @@ func main() {
 	databaseUrl := checkEnvVariable("DATABASE_URL")
 	googleMapsApiKey := checkEnvVariable("GOOGLE_MAPS_API_KEY")
 	storageKeyJson := checkEnvVariable("STORAGE_KEY_JSON")
+	apiUsername := checkEnvVariable("API_USERNAME")
+	apiPassword := checkEnvVariable("API_PASSWORD")
 
 	// init DB and DAO objects
 	err := initDB(databaseUrl)
@@ -68,8 +70,14 @@ func main() {
 
 	// set up routing
 	router := mux.NewRouter()
-	router.HandleFunc("/places", findNearbyPlacesHandler).Methods(http.MethodGet)
-	router.HandleFunc("/place/{place}/like/{device}/{liked}", saveLikeHandler).Methods(http.MethodPost)
+	router.HandleFunc(
+		"/places",
+		BasicAuth(findNearbyPlacesHandler, apiUsername, apiPassword),
+	).Methods(http.MethodGet)
+	router.HandleFunc(
+		"/place/{place}/like/{device}/{liked}",
+		BasicAuth(saveLikeHandler, apiUsername, apiPassword),
+	).Methods(http.MethodPost)
 	http.ListenAndServe(":"+port, router)
 }
 
