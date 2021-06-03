@@ -8,8 +8,8 @@ import (
 	"math"
 )
 
-const MaxPhotoWidth = 800
-const MaxPhotoLength = 1200
+const MaxPhotoWidth = 600
+const MaxPhotoHeight = 800
 
 func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string) (PlacesResponse, error) {
 	nearbySearchResp, err := Dao.MapsApi.FindNearbyPlaces(coordinates, radius, pageToken)
@@ -89,7 +89,7 @@ func uploadMainPhoto(placeId string, photos []maps.Photo) (string, error) {
 	}
 	firstPhoto := photos[0]
 	photoReference := firstPhoto.PhotoReference
-	photo, err := Dao.MapsApi.GetPhoto(photoReference, MaxPhotoWidth, MaxPhotoLength)
+	photo, err := Dao.MapsApi.GetPhoto(photoReference, MaxPhotoWidth, MaxPhotoHeight)
 	if err != nil {
 		log.Print(err)
 		return "", err
