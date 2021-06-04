@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 )
 
 type PlaceDB struct {
@@ -55,6 +56,28 @@ func (s *PlaceDbService) GetPlaceByPlaceId(googlePlaceId string) (*PlaceDB, erro
 		log.Print(err)
 	}
 	return &place, nil
+}
+
+func (s *PlaceDbService) GetPlacesByPlaceIds(googlePlaceIds []string) ([]PlaceDB, error) {
+	var result []PlaceDB
+	var query = `select ` + PlaceFields + ` from hungries.place where google_place_id = any($1::text[])`
+	var param = "{" + strings.Join(googlePlaceIds, ",") + "}"
+	rows, err := s.DB.Query(query, param)
+	if err != nil {
+		log.Print("Error searching places in db for places:  " + strings.Join(googlePlaceIds, " ") + " " + err.Error())
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var place PlaceDB
+		err := rows.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng, &place.PhotoUrl)
+		if err != nil {
+			log.Print("can't parse place")
+		}
+		result = append(result, place)
+	}
+
+	return result, nil
 }
 
 // GetPlaceById get place buy it's id
