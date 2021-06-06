@@ -49,54 +49,70 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string) (P
 
 func getPlaces(googlePlaceId []string) ([]dao.PlaceDB, error) {
 	// check db
-	var places, e = Dao.PlacesDB.GetPlacesByPlaceIds(googlePlaceId)
+	var existingPlaces, e = Dao.PlacesDB.GetPlacesByPlaceIds(googlePlaceId)
 	if e != nil {
 		log.Print(e)
 	}
-	if len(places) == len(googlePlaceId) {
-		return places, nil
+	if len(existingPlaces) == len(googlePlaceId) {
+		return existingPlaces, nil
 	}
 
-	// collect ids missing in db
+	var result = make([]dao.PlaceDB, len(existingPlaces))
+	for _, p := range existingPlaces {
+		result = append(result, p)
+	}
+
+	// collect ids absent in db
 	var missingPlacesGoogleIds []string
 	for _, placeId := range googlePlaceId {
-		if !contains(places, placeId) {
+		if !contains(existingPlaces, placeId) {
 			missingPlacesGoogleIds = append(missingPlacesGoogleIds, placeId)
 		}
 	}
 
-	// save new places
+	// get new places from google maps API
+	newPlacesToSaveChan := make(chan dao.PlaceDB)
 	for _, missingPlaceId := range missingPlacesGoogleIds {
-		var placeDetailsResult, err = Dao.MapsApi.GetPlaceInfoFromMaps(missingPlaceId, []maps.PlaceDetailsFieldMask{
-			maps.PlaceDetailsFieldMaskURL,
-			maps.PlaceDetailsFieldMaskName,
-			maps.PlaceDetailsFieldMaskGeometryLocationLat,
-			maps.PlaceDetailsFieldMaskGeometryLocationLng,
-			maps.PlaceDetailsFieldMaskPhotos,
-		})
-		if err != nil {
-			log.Print(err)
-			continue
-		}
-		// get photo and save it to cloud
-		photoUrl, _ := uploadMainPhoto(missingPlaceId, placeDetailsResult.Photos)
-		var newPlaceDb = dao.PlaceDB{
-			GooglePlaceId: missingPlaceId,
-			Name:          placeDetailsResult.Name,
-			Url:           placeDetailsResult.URL,
-			Lat:           placeDetailsResult.Geometry.Location.Lat,
-			Lng:           placeDetailsResult.Geometry.Location.Lng,
-			PhotoUrl:      sql.NullString{String: photoUrl, Valid: photoUrl != ""},
-		}
-		// todo batch save
-		savedPlace, err := Dao.PlacesDB.SavePlace(newPlaceDb)
-		if err != nil {
-			log.Print(err)
-			continue
-		}
-		places = append(places, *savedPlace)
+		go getInfoAndUploadPhoto(missingPlaceId, newPlacesToSaveChan)
 	}
-	return places, nil
+
+	var newPlacesToSave []dao.PlaceDB
+	for i := 0; i < len(missingPlacesGoogleIds); i++ {
+		place := <-newPlacesToSaveChan
+		newPlacesToSave = append(newPlacesToSave, place)
+	}
+
+	// save new places
+	var newSavedPlaces = Dao.PlacesDB.SavePlaces(newPlacesToSave)
+	for _, p := range newSavedPlaces {
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func getInfoAndUploadPhoto(googlePlaceID string, newPlacesToSave chan dao.PlaceDB) {
+	var placeDetailsResult, err = Dao.MapsApi.GetPlaceInfoFromMaps(googlePlaceID, []maps.PlaceDetailsFieldMask{
+		maps.PlaceDetailsFieldMaskURL,
+		maps.PlaceDetailsFieldMaskName,
+		maps.PlaceDetailsFieldMaskGeometryLocationLat,
+		maps.PlaceDetailsFieldMaskGeometryLocationLng,
+		maps.PlaceDetailsFieldMaskPhotos,
+	})
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	// get photo and save it to cloud
+	photoUrl, _ := uploadMainPhoto(placeDetailsResult.PlaceID, placeDetailsResult.Photos)
+	var newPlaceDb = dao.PlaceDB{
+		GooglePlaceId: googlePlaceID,
+		Name:          placeDetailsResult.Name,
+		Url:           placeDetailsResult.URL,
+		Lat:           placeDetailsResult.Geometry.Location.Lat,
+		Lng:           placeDetailsResult.Geometry.Location.Lng,
+		PhotoUrl:      sql.NullString{String: photoUrl, Valid: photoUrl != ""},
+	}
+	newPlacesToSave <- newPlaceDb
 }
 
 func contains(s []dao.PlaceDB, e string) bool {

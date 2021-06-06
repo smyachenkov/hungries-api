@@ -111,6 +111,45 @@ func (s *PlaceDbService) SavePlace(newPlace PlaceDB) (*PlaceDB, error) {
 	return s.GetPlaceById(lastInsertId)
 }
 
+// SavePlaces save new places in batch
+// todo add conflict check for same google id
+func (s *PlaceDbService) SavePlaces(newPlaces []PlaceDB) []PlaceDB {
+	const numberOfParams = 5
+	var query = "insert into hungries.place (google_place_id, name, url, location, photo_url) values"
+	var params = make([]interface{}, 0, len(newPlaces)*numberOfParams)
+	for i, place := range newPlaces {
+		query += fmt.Sprintf(
+			"($%d, $%d, $%d, ST_GeomFromText($%d), nullif($%d, ''))",
+			i*numberOfParams+1,
+			i*numberOfParams+2,
+			i*numberOfParams+3,
+			i*numberOfParams+4,
+			i*numberOfParams+5,
+		)
+		if i != len(newPlaces)-1 {
+			query += ","
+		}
+		params = append(params,
+			place.GooglePlaceId,
+			place.Name,
+			place.Url,
+			LatLngToString(place.Lat, place.Lng),
+			place.PhotoUrl,
+		)
+	}
+	_, err := s.DB.Exec(query, params...)
+	if err != nil {
+		log.Print("error saving places: " + err.Error())
+	}
+	// return submitted places
+	var placeGoogleIds []string
+	for _, p := range newPlaces {
+		placeGoogleIds = append(placeGoogleIds, p.GooglePlaceId)
+	}
+	result, _ := s.GetPlacesByPlaceIds(placeGoogleIds)
+	return result
+}
+
 func LatLngToString(lat float64, lng float64) string {
 	return fmt.Sprintf("Point(%f %f)", lat, lng)
 }
