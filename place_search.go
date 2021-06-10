@@ -11,7 +11,7 @@ import (
 const MaxPhotoWidth = 600
 const MaxPhotoHeight = 800
 
-func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string) (PlacesResponse, error) {
+func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string, deviceId string) (PlacesResponse, error) {
 	nearbySearchResp, err := Dao.MapsApi.FindNearbyPlaces(coordinates, radius, pageToken)
 	if err != nil {
 		log.Print("Error finding places via Maps API " + err.Error())
@@ -24,9 +24,14 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string) (P
 	}
 
 	var places = make([]PlaceResponse, len(nearbySearchResp.Results))
-	placesDb, _ := getPlaces(placesGoogleIds)
+	placesDb, _ := getPlaces(placesGoogleIds, deviceId)
 
 	for i, placeDb := range placesDb {
+		var isLiked *bool
+		if placeDb.IsLiked.Valid {
+			var isLikedCopy = placeDb.IsLiked.Bool
+			isLiked = &isLikedCopy
+		}
 		placeResponse := PlaceResponse{
 			Id:   placeDb.Id,
 			Name: placeDb.Name,
@@ -37,6 +42,7 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string) (P
 			},
 			Distance: uint(getDistance(coordinates.Lat, coordinates.Lng, placeDb.Lat, placeDb.Lng)),
 			PhotoUrl: placeDb.PhotoUrl.String,
+			IsLiked:  isLiked,
 		}
 		places[i] = placeResponse
 	}
@@ -47,9 +53,9 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string) (P
 	return response, nil
 }
 
-func getPlaces(googlePlaceId []string) ([]dao.PlaceDB, error) {
+func getPlaces(googlePlaceId []string, deviceId string) ([]dao.PlaceDB, error) {
 	// check db
-	var existingPlaces, e = Dao.PlacesDB.GetPlacesByPlaceIds(googlePlaceId)
+	var existingPlaces, e = Dao.PlacesDB.GetPlacesByPlaceIdsForDevice(googlePlaceId, deviceId)
 	if e != nil {
 		log.Print(e)
 	}

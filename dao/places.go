@@ -15,6 +15,7 @@ type PlaceDB struct {
 	Lat           float64
 	Lng           float64
 	PhotoUrl      sql.NullString
+	IsLiked       sql.NullBool
 }
 
 type PlaceDbService struct {
@@ -73,6 +74,38 @@ func (s *PlaceDbService) GetPlacesByPlaceIds(googlePlaceIds []string) ([]PlaceDB
 		err := rows.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng, &place.PhotoUrl)
 		if err != nil {
 			log.Print("can't parse place")
+		}
+		result = append(result, place)
+	}
+
+	return result, nil
+}
+
+func (s *PlaceDbService) GetPlacesByPlaceIdsForDevice(googlePlaceIds []string, deviceId string) ([]PlaceDB, error) {
+	var result []PlaceDB
+	var query = `select ` + PlaceFields + `, l.is_liked
+				from hungries.place 
+					left join hungries."like" l on l.place_id = id
+    				and l.device_id = $1
+				where google_place_id = any($2::text[])`
+	var placeIdsParam = "{" + strings.Join(googlePlaceIds, ",") + "}"
+	rows, err := s.DB.Query(query, deviceId, placeIdsParam)
+	if err != nil {
+		log.Print("Error searching places in db for places:  " + strings.Join(googlePlaceIds, " ") + " " + err.Error())
+		return result, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var place PlaceDB
+		err := rows.Scan(
+			&place.Id, &place.GooglePlaceId, &place.Name,
+			&place.Url, &place.Lat, &place.Lng,
+			&place.PhotoUrl, &place.IsLiked,
+		)
+		if err != nil {
+			log.Print("can't parse place")
+			continue
 		}
 		result = append(result, place)
 	}
