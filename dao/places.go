@@ -71,7 +71,11 @@ func (s *PlaceDbService) GetPlacesByPlaceIds(googlePlaceIds []string) ([]PlaceDB
 
 	for rows.Next() {
 		var place PlaceDB
-		err := rows.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng, &place.PhotoUrl)
+		err := rows.Scan(
+			&place.Id, &place.GooglePlaceId, &place.Name,
+			&place.Url, &place.Lat, &place.Lng,
+			&place.PhotoUrl, nil,
+		)
 		if err != nil {
 			log.Print("can't parse place")
 		}
