@@ -109,8 +109,6 @@ func (s *PlaceDbService) GetPlacesByPlaceIdsForDevice(googlePlaceIds []string) (
 		log.Print("Error searching places in db for places:  " + strings.Join(googlePlaceIds, " ") + " " + err.Error())
 		return result, err
 	}
-	defer rows.Close()
-
 	for rows.Next() {
 		var place PlaceDB
 		err := rows.Scan(
