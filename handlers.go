@@ -3,7 +3,7 @@ package main
 import (
 	"crypto/subtle"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"github.com/gorilla/mux"
 	"googlemaps.github.io/maps"
 	"log"
@@ -14,8 +14,12 @@ import (
 )
 
 func findNearbyPlacesHandler(w http.ResponseWriter, r *http.Request) {
-	pageToken := getStringParam(r.URL.Query(), "pagetoken")
-	deviceId := getStringParam(r.URL.Query(), "device")
+	deviceId, err := getStringParam(r.URL.Query(), "device")
+	if err != nil {
+		log.Print(err.Error())
+		return
+	}
+	pageToken, err := getStringParam(r.URL.Query(), "pagetoken")
 
 	radius, _ := strconv.ParseUint(r.URL.Query()["radius"][0], 10, 64)
 	coordinatesParam, hasCoordinates := r.URL.Query()["coordinates"]
@@ -40,15 +44,15 @@ func findNearbyPlacesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(places)
 }
 
-func getStringParam(values url.Values, paramName string) string {
+func getStringParam(values url.Values, paramName string) (string, error) {
 	paramValues, hasParam := values[paramName]
 	var value string
 	if hasParam {
 		value = paramValues[0]
 	} else {
-		log.Print(fmt.Errorf("missing param %s", paramName))
+		return "", errors.New("missing param " + paramName)
 	}
-	return value
+	return value, nil
 }
 
 func saveLikeHandler(w http.ResponseWriter, r *http.Request) {
