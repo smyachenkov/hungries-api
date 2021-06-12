@@ -11,7 +11,7 @@ type PlaceResponse struct {
 	Url      string           `json:"url"`
 	Location LocationResponse `json:"location"`
 	Distance uint             `json:"distance"`
-	PhotoUrl string           `json:"photoUrl"`
+	PhotoUrl *string          `json:"photoUrl"`
 	IsLiked  *bool            `json:"isLiked"`
 }
 

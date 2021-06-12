@@ -2,8 +2,10 @@ package dao
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"strconv"
+	"strings"
 )
 
 type LikeDB struct {
@@ -32,4 +34,33 @@ func (s *LikeDBService) SaveLike(deviceUUID string, placeID uint, isLiked bool) 
 		log.Print(err)
 	}
 	return err
+}
+
+// GetLikesForDevice get likes for device and internal places ids
+func (s *LikeDBService) GetLikesForDevice(deviceUUID string, placeIds []uint) (map[uint]bool, error) {
+	var result = make(map[uint]bool)
+	var query = `select place_id, is_liked from hungries."like"
+				 where device_id = $1 and place_id = any($2::int[])`
+
+	var placesIdsString []string
+	for _, p := range placeIds {
+		placesIdsString = append(placesIdsString, fmt.Sprint(p))
+	}
+	var placeIdsParam = "{" + strings.Join(placesIdsString, ",") + "}"
+	rows, err := s.DB.Query(query, deviceUUID, placeIdsParam)
+	if err != nil {
+		log.Print(fmt.Errorf("error getting likes for device %s and places %s", deviceUUID, placeIdsParam))
+		return nil, err
+	}
+	for rows.Next() {
+		var placeID uint
+		var isLiked bool
+		err := rows.Scan(&placeID, &isLiked)
+		if err != nil {
+			log.Print("Error reading like row")
+			continue
+		}
+		result[placeID] = isLiked
+	}
+	return result, nil
 }
