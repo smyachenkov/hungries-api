@@ -75,7 +75,7 @@ func getPlaces(googlePlaceId []string) ([]dao.PlaceDB, error) {
 		return existingPlaces, nil
 	}
 
-	var result = make([]dao.PlaceDB, len(existingPlaces))
+	var result []dao.PlaceDB
 	for _, p := range existingPlaces {
 		result = append(result, p)
 	}
