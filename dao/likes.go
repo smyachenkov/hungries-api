@@ -20,7 +20,7 @@ type LikeDBService struct {
 
 // SaveLike save new like or dislike for device
 func (s *LikeDBService) SaveLike(deviceUUID string, placeID uint, isLiked bool) error {
-	_, err := s.DB.Query("insert into hungries.\"like\" (device_id, place_id, is_liked) "+
+	rows, err := s.DB.Query("insert into hungries.\"like\" (device_id, place_id, is_liked) "+
 		"values ($1, $2, $3) "+
 		"on conflict (device_id, place_id) do update set "+
 		"update_date = now(), "+
@@ -29,6 +29,7 @@ func (s *LikeDBService) SaveLike(deviceUUID string, placeID uint, isLiked bool) 
 		placeID,
 		isLiked,
 	)
+	defer rows.Close()
 	if err != nil {
 		log.Print("Error saving like for " + deviceUUID + " and place " + strconv.Itoa(int(placeID)))
 		log.Print(err)
@@ -48,6 +49,7 @@ func (s *LikeDBService) GetLikesForDevice(deviceUUID string, placeIds []uint) (m
 	}
 	var placeIdsParam = "{" + strings.Join(placesIdsString, ",") + "}"
 	rows, err := s.DB.Query(query, deviceUUID, placeIdsParam)
+	defer rows.Close()
 	if err != nil {
 		log.Print(fmt.Errorf("error getting likes for device %s and places %s", deviceUUID, placeIdsParam))
 		return nil, err
