@@ -70,14 +70,22 @@ func main() {
 
 	// set up routing
 	router := mux.NewRouter()
+
 	router.HandleFunc(
 		"/places",
 		BasicAuth(findNearbyPlacesHandler, apiUsername, apiPassword),
 	).Methods(http.MethodGet)
+
+	router.HandleFunc(
+		"/places/liked",
+		BasicAuth(getLikedPlacesHandler, apiUsername, apiPassword),
+	).Methods(http.MethodGet)
+
 	router.HandleFunc(
 		"/place/{place}/like/{device}/{liked}",
 		BasicAuth(saveLikeHandler, apiUsername, apiPassword),
 	).Methods(http.MethodPost)
+
 	http.ListenAndServe(":"+port, router)
 }
 

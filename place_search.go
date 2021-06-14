@@ -32,8 +32,30 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string, de
 	}
 	likes, err := Dao.LikesDB.GetLikesForDevice(deviceId, internalPlacesIds)
 
-	// aggregate likes and places info to response
-	var places []PlaceResponse
+	response := PlacesResponse{
+		Places:        placeDBtoResponse(placesDb, likes, coordinates),
+		NextPageToken: nearbySearchResp.NextPageToken,
+	}
+	return response, nil
+}
+
+func FindLikedPlaces(deviceId string, coordinates maps.LatLng) (PlacesResponse, error) {
+	placesDb, err := Dao.PlacesDB.GetLikedPlacesForDevice(deviceId)
+	if err != nil {
+		return PlacesResponse{}, err
+	}
+	likes := make(map[uint]bool)
+	for _, p := range placesDb {
+		likes[p.Id] = true
+	}
+	response := PlacesResponse{
+		Places: placeDBtoResponse(placesDb, likes, coordinates),
+	}
+	return response, nil
+}
+
+func placeDBtoResponse(placesDb []dao.PlaceDB, likes map[uint]bool, coordinates maps.LatLng) []PlaceResponse {
+	var result []PlaceResponse
 	for _, placeDb := range placesDb {
 		var isLiked *bool
 		if isLikedVal, ok := likes[placeDb.Id]; ok {
@@ -56,13 +78,9 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string, de
 			PhotoUrl: photoUrl,
 			IsLiked:  isLiked,
 		}
-		places = append(places, placeResponse)
+		result = append(result, placeResponse)
 	}
-	response := PlacesResponse{
-		Places:        places,
-		NextPageToken: nearbySearchResp.NextPageToken,
-	}
-	return response, nil
+	return result
 }
 
 func getPlaces(googlePlaceId []string) ([]dao.PlaceDB, error) {

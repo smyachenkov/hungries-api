@@ -15,26 +15,15 @@ import (
 
 func findNearbyPlacesHandler(w http.ResponseWriter, r *http.Request) {
 	deviceId, err := getStringParam(r.URL.Query(), "device")
+	pageToken, err := getStringParam(r.URL.Query(), "pagetoken")
+	radius, _ := strconv.ParseUint(r.URL.Query()["radius"][0], 10, 64)
+	coordinates, err := getCoordinatesParam(r.URL.Query(), "coordinates")
 	if err != nil {
 		log.Print(err.Error())
 		return
 	}
-	pageToken, err := getStringParam(r.URL.Query(), "pagetoken")
-
-	radius, _ := strconv.ParseUint(r.URL.Query()["radius"][0], 10, 64)
-	coordinatesParam, hasCoordinates := r.URL.Query()["coordinates"]
-	var coordinates maps.LatLng
-	if hasCoordinates {
-		latitude, _ := strconv.ParseFloat(strings.Split(coordinatesParam[0], ",")[0], 64)
-		longitude, _ := strconv.ParseFloat(strings.Split(coordinatesParam[0], ",")[1], 64)
-		coordinates = maps.LatLng{
-			Lat: latitude,
-			Lng: longitude,
-		}
-	}
 
 	places, err := FindNearbyPlaces(coordinates, uint(radius), pageToken, deviceId)
-
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Default().Print("Error discovering places " + err.Error())
@@ -44,15 +33,22 @@ func findNearbyPlacesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(places)
 }
 
-func getStringParam(values url.Values, paramName string) (string, error) {
-	paramValues, hasParam := values[paramName]
-	var value string
-	if hasParam {
-		value = paramValues[0]
-	} else {
-		return "", errors.New("missing param " + paramName)
+func getLikedPlacesHandler(w http.ResponseWriter, r *http.Request) {
+	deviceId, err := getStringParam(r.URL.Query(), "device")
+	coordinates, err := getCoordinatesParam(r.URL.Query(), "coordinates")
+	if err != nil {
+		log.Print(err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
-	return value, nil
+	places, err := FindLikedPlaces(deviceId, coordinates)
+	if err != nil {
+		log.Print(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(places)
 }
 
 func saveLikeHandler(w http.ResponseWriter, r *http.Request) {
@@ -80,6 +76,31 @@ func saveLikeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	return
+}
+
+func getStringParam(values url.Values, paramName string) (string, error) {
+	paramValues, hasParam := values[paramName]
+	var value string
+	if hasParam {
+		value = paramValues[0]
+	} else {
+		return "", errors.New("missing param " + paramName)
+	}
+	return value, nil
+}
+
+func getCoordinatesParam(values url.Values, paramName string) (maps.LatLng, error) {
+	coordinatesParam, hasCoordinates := values[paramName]
+	var coordinates maps.LatLng
+	if hasCoordinates {
+		latitude, _ := strconv.ParseFloat(strings.Split(coordinatesParam[0], ",")[0], 64)
+		longitude, _ := strconv.ParseFloat(strings.Split(coordinatesParam[0], ",")[1], 64)
+		coordinates = maps.LatLng{
+			Lat: latitude,
+			Lng: longitude,
+		}
+	}
+	return coordinates, nil
 }
 
 // BasicAuth basic auth wrapper for handlers, see https://stackoverflow.com/questions/21936332/

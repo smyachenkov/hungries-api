@@ -21,7 +21,7 @@ type PlaceDbService struct {
 	DB *sql.DB
 }
 
-const PlaceFields = `id, google_place_id, name, url, ST_X(location::geometry), ST_Y(location::geometry), photo_url`
+const PlaceFields = `p.id, p.google_place_id, p.name, p.url, ST_X(p.location::geometry), ST_Y(p.location::geometry), p.photo_url`
 
 // PlaceExistsByGoogleId check if place exists by google id
 func (s *PlaceDbService) PlaceExistsByGoogleId(googlePlaceId string) (bool, error) {
@@ -49,7 +49,7 @@ func (s *PlaceDbService) PlaceExistsById(placeId uint) (bool, error) {
 func (s *PlaceDbService) GetPlaceByPlaceId(googlePlaceId string) (*PlaceDB, error) {
 	var place PlaceDB
 	row := s.DB.QueryRow(
-		`select `+PlaceFields+` from hungries.place where google_place_id = $1`,
+		`select `+PlaceFields+` from hungries.place p where p.google_place_id = $1`,
 		googlePlaceId)
 	err := row.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng, &place.PhotoUrl)
 	if err != nil {
@@ -62,7 +62,7 @@ func (s *PlaceDbService) GetPlaceByPlaceId(googlePlaceId string) (*PlaceDB, erro
 func (s *PlaceDbService) GetPlaceById(id uint) (*PlaceDB, error) {
 	var place PlaceDB
 	row := s.DB.QueryRow(
-		`select `+PlaceFields+` from hungries.place where id = $1`,
+		`select `+PlaceFields+` from hungries.place p where p.id = $1`,
 		id)
 	err := row.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng, &place.PhotoUrl)
 	if err != nil {
@@ -73,7 +73,7 @@ func (s *PlaceDbService) GetPlaceById(id uint) (*PlaceDB, error) {
 
 func (s *PlaceDbService) GetPlacesByPlaceIds(googlePlaceIds []string) ([]PlaceDB, error) {
 	var result []PlaceDB
-	var query = `select ` + PlaceFields + ` from hungries.place where google_place_id = any($1::text[])`
+	var query = `select ` + PlaceFields + ` from hungries.place p where p.google_place_id = any($1::text[])`
 	var param = "{" + strings.Join(googlePlaceIds, ",") + "}"
 	rows, err := s.DB.Query(query, param)
 	if err != nil {
@@ -100,13 +100,42 @@ func (s *PlaceDbService) GetPlacesByPlaceIds(googlePlaceIds []string) ([]PlaceDB
 func (s *PlaceDbService) GetPlacesByPlaceIdsForDevice(googlePlaceIds []string) ([]PlaceDB, error) {
 	var result []PlaceDB
 	var query = `select ` + PlaceFields + `
-				from hungries.place 
-				where google_place_id = any($1::text[])`
+				from hungries.place p
+				where p.google_place_id = any($1::text[])`
 	var placeIdsParam = "{" + strings.Join(googlePlaceIds, ",") + "}"
 	rows, err := s.DB.Query(query, placeIdsParam)
 	defer rows.Close()
 	if err != nil {
 		log.Print("Error searching places in db for places:  " + strings.Join(googlePlaceIds, " ") + " " + err.Error())
+		return result, err
+	}
+	for rows.Next() {
+		var place PlaceDB
+		err := rows.Scan(
+			&place.Id, &place.GooglePlaceId, &place.Name,
+			&place.Url, &place.Lat, &place.Lng,
+			&place.PhotoUrl,
+		)
+		if err != nil {
+			log.Print("can't parse place")
+			continue
+		}
+		result = append(result, place)
+	}
+	return result, nil
+}
+
+func (s *PlaceDbService) GetLikedPlacesForDevice(deviceId string) ([]PlaceDB, error) {
+	var result []PlaceDB
+	var query = `select ` + PlaceFields + `
+				from hungries.place p
+				join hungries."like" l 
+				on l.place_id = p.id
+				and l.is_liked = true
+				where l.device_id = $1`
+	rows, err := s.DB.Query(query, deviceId)
+	if err != nil {
+		log.Print("Error searching liked places in db for deviceId " + deviceId + " " + err.Error())
 		return result, err
 	}
 	for rows.Next() {
