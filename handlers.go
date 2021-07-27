@@ -14,8 +14,8 @@ import (
 )
 
 func findNearbyPlacesHandler(w http.ResponseWriter, r *http.Request) {
-	deviceId, err := getStringParam(r.URL.Query(), "device")
-	pageToken, err := getStringParam(r.URL.Query(), "pagetoken")
+	deviceId := getStringParamWithDefault(r.URL.Query(), "device", "")
+	pageToken, err := getStringParamRequired(r.URL.Query(), "pagetoken")
 	radius, _ := strconv.ParseUint(r.URL.Query()["radius"][0], 10, 64)
 	coordinates, err := getCoordinatesParam(r.URL.Query(), "coordinates")
 	if err != nil {
@@ -34,7 +34,7 @@ func findNearbyPlacesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getLikedPlacesHandler(w http.ResponseWriter, r *http.Request) {
-	deviceId, err := getStringParam(r.URL.Query(), "device")
+	deviceId, err := getStringParamRequired(r.URL.Query(), "device")
 	coordinates, err := getCoordinatesParam(r.URL.Query(), "coordinates")
 	if err != nil {
 		log.Print(err.Error())
@@ -78,7 +78,7 @@ func saveLikeHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func getStringParam(values url.Values, paramName string) (string, error) {
+func getStringParamRequired(values url.Values, paramName string) (string, error) {
 	paramValues, hasParam := values[paramName]
 	var value string
 	if hasParam {
@@ -87,6 +87,17 @@ func getStringParam(values url.Values, paramName string) (string, error) {
 		return "", errors.New("missing param " + paramName)
 	}
 	return value, nil
+}
+
+func getStringParamWithDefault(values url.Values, paramName string, defaultValue string) string {
+	paramValues, hasParam := values[paramName]
+	var value string
+	if hasParam {
+		value = paramValues[0]
+	} else {
+		return defaultValue
+	}
+	return value
 }
 
 func getCoordinatesParam(values url.Values, paramName string) (maps.LatLng, error) {

@@ -30,7 +30,12 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string, de
 	for _, p := range placesDb {
 		internalPlacesIds = append(internalPlacesIds, p.Id)
 	}
-	likes, err := Dao.LikesDB.GetLikesForDevice(deviceId, internalPlacesIds)
+	var likes map[uint]bool
+	if deviceId != "" {
+		likes, err = Dao.LikesDB.GetLikesForDevice(deviceId, internalPlacesIds)
+	} else {
+		likes = map[uint]bool{}
+	}
 
 	response := PlacesResponse{
 		Places:        placeDBtoResponse(placesDb, likes, coordinates),
