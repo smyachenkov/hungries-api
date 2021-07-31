@@ -2,9 +2,9 @@ package main
 
 import (
 	"database/sql"
+	log "github.com/sirupsen/logrus"
 	"googlemaps.github.io/maps"
 	"hungries-api/dao"
-	"log"
 	"math"
 )
 
@@ -12,9 +12,15 @@ const MaxPhotoWidth = 600
 const MaxPhotoHeight = 800
 
 func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string, deviceId string) (PlacesResponse, error) {
+	log.WithFields(log.Fields{
+		"coordinates": coordinates,
+		"radius":      radius,
+		"pageToken":   pageToken,
+		"deviceId":    deviceId,
+	}).Info("Searching places neardby")
 	nearbySearchResp, err := Dao.MapsApi.FindNearbyPlaces(coordinates, radius, pageToken)
 	if err != nil {
-		log.Print("Error finding places via Maps API " + err.Error())
+		log.WithField("error", err).Error("Error finding places via Maps API")
 		return PlacesResponse{}, err
 	}
 
@@ -45,6 +51,10 @@ func FindNearbyPlaces(coordinates maps.LatLng, radius uint, pageToken string, de
 }
 
 func FindLikedPlaces(deviceId string, coordinates maps.LatLng) (PlacesResponse, error) {
+	log.WithFields(log.Fields{
+		"deviceId":    deviceId,
+		"coordinates": coordinates,
+	}).Info("Getting liked places")
 	placesDb, err := Dao.PlacesDB.GetLikedPlacesForDevice(deviceId)
 	if err != nil {
 		return PlacesResponse{}, err
@@ -88,13 +98,16 @@ func placeDBtoResponse(placesDb []dao.PlaceDB, likes map[uint]bool, coordinates 
 	return result
 }
 
-func getPlaces(googlePlaceId []string) ([]dao.PlaceDB, error) {
+func getPlaces(googlePlaceIds []string) ([]dao.PlaceDB, error) {
 	// check db
-	var existingPlaces, e = Dao.PlacesDB.GetPlacesByPlaceIdsForDevice(googlePlaceId)
-	if e != nil {
-		log.Print(e)
+	var existingPlaces, err = Dao.PlacesDB.GetPlacesByPlaceIdsForDevice(googlePlaceIds)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error":          err,
+			"googlePlaceIds": googlePlaceIds,
+		}).Info("Error getting places from db")
 	}
-	if len(existingPlaces) == len(googlePlaceId) {
+	if len(existingPlaces) == len(googlePlaceIds) {
 		return existingPlaces, nil
 	}
 
@@ -105,7 +118,7 @@ func getPlaces(googlePlaceId []string) ([]dao.PlaceDB, error) {
 
 	// collect ids absent in db
 	var missingPlacesGoogleIds []string
-	for _, placeId := range googlePlaceId {
+	for _, placeId := range googlePlaceIds {
 		if !contains(existingPlaces, placeId) {
 			missingPlacesGoogleIds = append(missingPlacesGoogleIds, placeId)
 		}

@@ -8,10 +8,10 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/option"
 	"googlemaps.github.io/maps"
 	"hungries-api/dao"
-	"log"
 	"net/http"
 	"os"
 )

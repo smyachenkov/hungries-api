@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	"googlemaps.github.io/maps"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -19,14 +19,14 @@ func findNearbyPlacesHandler(w http.ResponseWriter, r *http.Request) {
 	radius, _ := strconv.ParseUint(r.URL.Query()["radius"][0], 10, 64)
 	coordinates, err := getCoordinatesParam(r.URL.Query(), "coordinates")
 	if err != nil {
-		log.Print(err.Error())
+		log.WithField("error", err).Error("Incorrect input data")
 		return
 	}
 
 	places, err := FindNearbyPlaces(coordinates, uint(radius), pageToken, deviceId)
 	if err != nil {
+		log.WithField("error", err).Error("Error discovering places")
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Default().Print("Error discovering places " + err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -37,7 +37,7 @@ func getLikedPlacesHandler(w http.ResponseWriter, r *http.Request) {
 	deviceId, err := getStringParamRequired(r.URL.Query(), "device")
 	coordinates, err := getCoordinatesParam(r.URL.Query(), "coordinates")
 	if err != nil {
-		log.Print(err.Error())
+		log.WithField("error", err).Error("Incorrect input data")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -53,13 +53,18 @@ func getLikedPlacesHandler(w http.ResponseWriter, r *http.Request) {
 
 func saveLikeHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	placeId, _ := strconv.ParseUint(vars["place"], 10, 64)
+	placeId, err := strconv.ParseUint(vars["place"], 10, 64)
 	deviceUUID := vars["device"]
-	isLiked, _ := strconv.ParseBool(vars["liked"])
+	isLiked, err := strconv.ParseBool(vars["liked"])
+
+	if err != nil {
+		log.WithField("error", err).Error("Incorrect input data")
+	}
 
 	// check if place exist
 	placeExist, err := Dao.PlacesDB.PlaceExistsById(uint(placeId))
 	if err != nil {
+		log.WithField("error", err).Error("Can't find place")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -70,8 +75,8 @@ func saveLikeHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = Dao.LikesDB.SaveLike(deviceUUID, uint(placeId), isLiked)
 	if err != nil {
+		log.WithField("error", err).Error("Error submitting like/dislike")
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Print("Error submitting like " + err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusOK)

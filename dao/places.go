@@ -3,7 +3,7 @@ package dao
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -29,7 +29,7 @@ func (s *PlaceDbService) PlaceExistsByGoogleId(googlePlaceId string) (bool, erro
 	row := s.DB.QueryRow(`select count(1) from hungries.place where google_place_id = $1`, googlePlaceId)
 	err := row.Scan(&result)
 	if err != nil {
-		log.Print(err)
+		log.WithField("error", err).Error("Error reading row for place")
 	}
 	return result, nil
 }
@@ -40,7 +40,7 @@ func (s *PlaceDbService) PlaceExistsById(placeId uint) (bool, error) {
 	row := s.DB.QueryRow(`select count(1) from hungries.place where id = $1`, placeId)
 	err := row.Scan(&result)
 	if err != nil {
-		log.Print(err)
+		log.WithField("error", err).Error("Error reading row for place")
 	}
 	return result, nil
 }
@@ -53,7 +53,7 @@ func (s *PlaceDbService) GetPlaceByPlaceId(googlePlaceId string) (*PlaceDB, erro
 		googlePlaceId)
 	err := row.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng, &place.PhotoUrl)
 	if err != nil {
-		log.Print(err)
+		log.WithField("error", err).Error("Error reading row for place")
 	}
 	return &place, nil
 }
@@ -66,7 +66,7 @@ func (s *PlaceDbService) GetPlaceById(id uint) (*PlaceDB, error) {
 		id)
 	err := row.Scan(&place.Id, &place.GooglePlaceId, &place.Name, &place.Url, &place.Lat, &place.Lng, &place.PhotoUrl)
 	if err != nil {
-		log.Print(err)
+		log.WithField("error", err).Error("error reading row")
 	}
 	return &place, nil
 }
@@ -77,7 +77,10 @@ func (s *PlaceDbService) GetPlacesByPlaceIds(googlePlaceIds []string) ([]PlaceDB
 	var param = "{" + strings.Join(googlePlaceIds, ",") + "}"
 	rows, err := s.DB.Query(query, param)
 	if err != nil {
-		log.Print("Error searching places in db for places:  " + strings.Join(googlePlaceIds, " ") + " " + err.Error())
+		log.WithFields(log.Fields{
+			"placeIds": strings.Join(googlePlaceIds, " "),
+			"error":    err,
+		}).Error("Error searching places in db")
 	}
 	defer rows.Close()
 
@@ -89,7 +92,7 @@ func (s *PlaceDbService) GetPlacesByPlaceIds(googlePlaceIds []string) ([]PlaceDB
 			&place.PhotoUrl,
 		)
 		if err != nil {
-			log.Print("can't parse place")
+			log.WithField("error", err).Error("Error reading row for place")
 		}
 		result = append(result, place)
 	}
@@ -106,7 +109,10 @@ func (s *PlaceDbService) GetPlacesByPlaceIdsForDevice(googlePlaceIds []string) (
 	rows, err := s.DB.Query(query, placeIdsParam)
 	defer rows.Close()
 	if err != nil {
-		log.Print("Error searching places in db for places:  " + strings.Join(googlePlaceIds, " ") + " " + err.Error())
+		log.WithFields(log.Fields{
+			"places": googlePlaceIds,
+			"error":  err,
+		}).Error("Error searching places in db")
 		return result, err
 	}
 	for rows.Next() {
@@ -117,7 +123,7 @@ func (s *PlaceDbService) GetPlacesByPlaceIdsForDevice(googlePlaceIds []string) (
 			&place.PhotoUrl,
 		)
 		if err != nil {
-			log.Print("can't parse place")
+			log.WithField("error", err).Error("Error reading row for place")
 			continue
 		}
 		result = append(result, place)
@@ -146,7 +152,7 @@ func (s *PlaceDbService) GetLikedPlacesForDevice(deviceId string) ([]PlaceDB, er
 			&place.PhotoUrl,
 		)
 		if err != nil {
-			log.Print("can't parse place")
+			log.WithField("error", err).Error("Error reading row for place")
 			continue
 		}
 		result = append(result, place)
@@ -156,6 +162,7 @@ func (s *PlaceDbService) GetLikedPlacesForDevice(deviceId string) ([]PlaceDB, er
 
 // SavePlace save new place
 func (s *PlaceDbService) SavePlace(newPlace PlaceDB) (*PlaceDB, error) {
+	log.WithField("place", newPlace).Info("Saving new place to db")
 	lastInsertId := uint(0)
 	err := s.DB.QueryRow(`insert into
 									hungries.place (google_place_id, name, url, location, photo_url) 
@@ -167,7 +174,10 @@ func (s *PlaceDbService) SavePlace(newPlace PlaceDB) (*PlaceDB, error) {
 		newPlace.PhotoUrl,
 	).Scan(&lastInsertId)
 	if err != nil {
-		log.Print(err)
+		log.WithFields(log.Fields{
+			"error": err,
+			"place": newPlace,
+		}).Error("Error saving new place")
 	}
 	return s.GetPlaceById(lastInsertId)
 }
@@ -200,7 +210,7 @@ func (s *PlaceDbService) SavePlaces(newPlaces []PlaceDB) []PlaceDB {
 	}
 	_, err := s.DB.Exec(query, params...)
 	if err != nil {
-		log.Print("error saving places: " + err.Error())
+		log.WithField("error", err).Error("Error saving places")
 	}
 	// return submitted places
 	var placeGoogleIds []string
