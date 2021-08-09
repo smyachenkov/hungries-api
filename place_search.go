@@ -157,14 +157,16 @@ func getInfoAndUploadPhoto(googlePlaceID string, newPlacesToSave chan dao.PlaceD
 		return
 	}
 	// get photo and save it to cloud
-	photoUrl, _ := uploadMainPhoto(googlePlaceID, placeDetailsResult.Photos)
+	// disabled
+	// photoUrl, _ := uploadMainPhoto(googlePlaceID, placeDetailsResult.Photos)
 	var newPlaceDb = dao.PlaceDB{
 		GooglePlaceId: googlePlaceID,
 		Name:          placeDetailsResult.Name,
 		Url:           placeDetailsResult.URL,
 		Lat:           placeDetailsResult.Geometry.Location.Lat,
 		Lng:           placeDetailsResult.Geometry.Location.Lng,
-		PhotoUrl:      sql.NullString{String: photoUrl, Valid: photoUrl != ""},
+		//PhotoUrl:      sql.NullString{String: photoUrl, Valid: photoUrl != ""},
+		PhotoUrl: sql.NullString{String: "", Valid: true},
 	}
 	newPlacesToSave <- newPlaceDb
 }
