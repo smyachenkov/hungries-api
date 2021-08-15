@@ -82,9 +82,10 @@ func placeDBtoResponse(placesDb []dao.PlaceDB, likes map[uint]bool, coordinates 
 			photoUrl = &photoUrlCopy
 		}
 		placeResponse := PlaceResponse{
-			Id:   placeDb.Id,
-			Name: placeDb.Name,
-			Url:  placeDb.Url,
+			Id:            placeDb.Id,
+			GooglePlaceId: placeDb.GooglePlaceId,
+			Name:          placeDb.Name,
+			Url:           placeDb.Url,
 			Location: LocationResponse{
 				Latitude:  placeDb.Lat,
 				Longitude: placeDb.Lng,
