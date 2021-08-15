@@ -7,7 +7,7 @@ type PlacesResponse struct {
 
 type PlaceResponse struct {
 	Id            uint             `json:"id"`
-	GooglePlaceId string           `json:"googleId"`
+	GooglePlaceId string           `json:"googlePlaceId"`
 	Name          string           `json:"name"`
 	Url           string           `json:"url"`
 	Location      LocationResponse `json:"location"`
