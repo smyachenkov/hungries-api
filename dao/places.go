@@ -3,8 +3,9 @@ package dao
 import (
 	"database/sql"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type PlaceDB struct {
@@ -131,17 +132,17 @@ func (s *PlaceDbService) GetPlacesByPlaceIdsForDevice(googlePlaceIds []string) (
 	return result, nil
 }
 
-func (s *PlaceDbService) GetLikedPlacesForDevice(deviceId string) ([]PlaceDB, error) {
+func (s *PlaceDbService) GetLikedPlacesForDevice(userId string) ([]PlaceDB, error) {
 	var result []PlaceDB
 	var query = `select ` + PlaceFields + `
 				from hungries.place p
 				join hungries."like" l 
 				on l.place_id = p.id
 				and l.is_liked = true
-				where l.device_id = $1`
-	rows, err := s.DB.Query(query, deviceId)
+				where l.user_id = $1`
+	rows, err := s.DB.Query(query, userId)
 	if err != nil {
-		log.Print("Error searching liked places in db for deviceId " + deviceId + " " + err.Error())
+		log.Print("Error searching liked places in db for user " + userId + " " + err.Error())
 		return result, err
 	}
 	for rows.Next() {

@@ -3,9 +3,10 @@ package dao
 import (
 	"database/sql"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type LikeDB struct {
@@ -18,26 +19,26 @@ type LikeDBService struct {
 	DB *sql.DB
 }
 
-// SaveLike save new like or dislike for device
-func (s *LikeDBService) SaveLike(deviceUUID string, placeID uint, isLiked bool) error {
+// SaveLike save new like or dislike for userId
+func (s *LikeDBService) SaveLike(userId string, placeID uint, isLiked bool) error {
 	log.WithFields(log.Fields{
-		"device":  deviceUUID,
+		"userId":  userId,
 		"place":   strconv.Itoa(int(placeID)),
 		"isLiked": isLiked,
 	}).Info("Saving like")
-	rows, err := s.DB.Query("insert into hungries.\"like\" (device_id, place_id, is_liked) "+
+	rows, err := s.DB.Query("insert into hungries.\"like\" (user_id, place_id, is_liked) "+
 		"values ($1, $2, $3) "+
-		"on conflict (device_id, place_id) do update set "+
+		"on conflict (user_id, place_id) do update set "+
 		"update_date = now(), "+
 		"is_liked    = excluded.is_liked",
-		deviceUUID,
+		userId,
 		placeID,
 		isLiked,
 	)
 	defer rows.Close()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"device":  deviceUUID,
+			"userId":  userId,
 			"place":   strconv.Itoa(int(placeID)),
 			"isLiked": isLiked,
 			"error":   err,
@@ -47,24 +48,24 @@ func (s *LikeDBService) SaveLike(deviceUUID string, placeID uint, isLiked bool) 
 }
 
 // GetLikesForDevice get likes for device and internal places ids
-func (s *LikeDBService) GetLikesForDevice(deviceUUID string, placeIds []uint) (map[uint]bool, error) {
-	log.WithField("device", deviceUUID).Info("Getting likes for devices")
+func (s *LikeDBService) GetLikesForDevice(userId string, placeIds []uint) (map[uint]bool, error) {
+	log.WithField("userId", userId).Info("Getting likes for userId")
 	var result = make(map[uint]bool)
 	var query = `select place_id, is_liked from hungries."like"
-				 where device_id = $1 and place_id = any($2::int[])`
+				 where user_id = $1 and place_id = any($2::int[])`
 
 	var placesIdsString []string
 	for _, p := range placeIds {
 		placesIdsString = append(placesIdsString, fmt.Sprint(p))
 	}
 	var placeIdsParam = "{" + strings.Join(placesIdsString, ",") + "}"
-	rows, err := s.DB.Query(query, deviceUUID, placeIdsParam)
+	rows, err := s.DB.Query(query, userId, placeIdsParam)
 	defer rows.Close()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"device": deviceUUID,
+			"userId": userId,
 			"places": placeIdsParam,
-		}).Error("Error getting likes for device")
+		}).Error("Error getting likes for userId")
 		return nil, err
 	}
 	for rows.Next() {
